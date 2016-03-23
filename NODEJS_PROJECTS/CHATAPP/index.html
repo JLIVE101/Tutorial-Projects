@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Application</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <h1>This is a chat application</h1>
+
+    <div class="chat">
+        <input type="text" class="chat-name" placeholder="Enter your name">
+        <div class="chat-messages"></div>
+        <textarea placeholder="type your message"></textarea>
+        <div class="chat-status">Status:<span>Idle</span>
+        </div>
+    </div>
+
+
+    <script src="http://127.0.0.1:8080/socket.io/socket.io.js"></script>
+    <script>
+        (function () {
+            var getNode = function (s) {
+                    return document.querySelector(s);
+                },
+                //get required nodes
+                status = getNode('.chat-status span'),
+                textarea = getNode('.chat textarea'),
+                messages = getNode('.chat-messages'),
+                chatName = getNode('.chat-name'),
+
+                statusDefault = status.textContent,
+
+                setStatus = function (s) {
+                    if (s !== statusDefault) {
+                        var delay = setTimeout(function () {
+                            setStatus(statusDefault);
+                            clearInterval(delay);
+                        }, 3000);
+                    }
+                    status.textContent = s;
+                };
+
+
+            try {
+                var socket = io.connect('http://127.0.0.1:8080');
+            } catch (e) {
+                //set status to warn user
+            }
+            if (socket !== undefined) {
+                //listen for output
+
+                socket.on('output', function (data) {
+                    if (data.length) {
+                        //loop through all the messages
+                        data.forEach(function (elem) {
+                            var message = document.createElement('div');
+                            message.setAttribute('class', 'chat-message');
+                            message.textContent = elem.name + ': ' + elem.message;
+
+                            // Append to messages box
+                            messages.appendChild(message);
+                            messages.insertBefore(message, messages.firstChild);
+
+
+                        });
+                    }
+                });
+
+                //listen for status
+                socket.on('status', function (data) {
+                    setStatus((typeof data === 'object') ? data.message : data);
+
+                    if (data.clear === true) {
+                        textarea.value = '';
+                    }
+                });
+
+
+
+                //listen for keydown
+                textarea.addEventListener('keydown', function (event) {
+                    var self = this,
+                        name = chatName.value;
+
+
+                    if (event.which === 13 && event.shiftKey === false) {
+                        socket.emit('input', {
+                            name: name,
+                            message: self.value
+                        });
+
+                        event.preventDefault();
+                    }
+                });
+
+            }
+        })();
+    </script>
+</body>
+
+</html>
